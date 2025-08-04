@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import urllib.request
+import os
 
 # Only download if not already there
 if not os.path.exists("news.csv"):
@@ -164,6 +165,7 @@ cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
 
 cm_display.plot()
 plt.show()
+
 
 
 
