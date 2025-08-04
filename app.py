@@ -11,9 +11,18 @@ import os
 import requests
 
 # Only download if not already there
-if not os.path.exists("news.csv"):
-    url = "https://drive.google.com/uc?export=download&id=1-ncna2HHJOPewqhrM2d1Tir9R12suDjx"
-    urllib.request.urlretrieve(url, "news.csv")
+file_id = "1-ncna2HHJOPewqhrM2d1Tir9R12suDjx"
+url = f"https://drive.google.com/uc?export=download&id={file_id}"
+file_path = "news.csv"
+
+# Download the file if not present locally
+if not os.path.exists(file_path):
+    print("Downloading news.csv from Google Drive...")
+    response = requests.get(url)
+    with open(file_path, "wb") as f:
+        f.write(response.content)
+    print("Download complete.")
+
 
 # %%
 data = pd.read_csv('news.csv',index_col=0)
@@ -166,6 +175,7 @@ cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
 
 cm_display.plot()
 plt.show()
+
 
 
 
