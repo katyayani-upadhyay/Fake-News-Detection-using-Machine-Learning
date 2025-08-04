@@ -5,9 +5,16 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
+import urllib.request
+
+# Only download if not already there
+if not os.path.exists("news.csv"):
+    url = "https://your-public-link.com/news.csv"
+    urllib.request.urlretrieve(url, "news.csv")
 
 # %%
-data = pd.read_csv('News.csv',index_col=0)
+data = pd.read_csv('news.csv',index_col=0)
 data.head()
 
 # %%
@@ -157,5 +164,6 @@ cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
 
 cm_display.plot()
 plt.show()
+
 
 
