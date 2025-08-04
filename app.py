@@ -10,7 +10,7 @@ import urllib.request
 
 # Only download if not already there
 if not os.path.exists("news.csv"):
-    url = "https://your-public-link.com/news.csv"
+    url = "https://drive.google.com/file/d/1-ncna2HHJOPewqhrM2d1Tir9R12suDjx/view?usp=sharing"
     urllib.request.urlretrieve(url, "news.csv")
 
 # %%
@@ -164,6 +164,7 @@ cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
 
 cm_display.plot()
 plt.show()
+
 
 
 
