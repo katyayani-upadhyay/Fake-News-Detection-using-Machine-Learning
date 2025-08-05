@@ -32,7 +32,11 @@ data.head()
 data.shape
 
 # %%
-data = data.drop(["title", "subject","date"], axis = 1)
+# Safely drop columns only if they exist
+for col in ["title", "subject", "date"]:
+    if col in data.columns:
+        data = data.drop(col, axis=1)
+
 
 # %%
 data.isnull().sum()
@@ -175,6 +179,7 @@ cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
 
 cm_display.plot()
 plt.show()
+
 
 
 
