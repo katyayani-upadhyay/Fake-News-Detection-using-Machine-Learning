@@ -2,189 +2,65 @@
 # <a href="https://colab.research.google.com/github/katyayani-upadhyay/Fake-News-Detection-using-Machine-Learning/blob/main/Fake_News_Detection_using_Machine_Learning.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 # %%
+import streamlit as st
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-import urllib.request
+import pickle
 import os
-import requests
 
-# Only download if not already there
-file_id = "1-ncna2HHJOPewqhrM2d1Tir9R12suDjx"
-url = f"https://drive.google.com/uc?export=download&id={file_id}"
-file_path = "news.csv"
+# Title
+st.set_page_config(page_title="Fake News Detection App", layout="centered")
+st.title("📰 Fake News Detection App")
+st.markdown("""
+This app predicts whether the news entered is **Fake** or **Real** using a trained Machine Learning model.
+""")
 
-# Download the file if not present locally
-if not os.path.exists(file_path):
-    print("Downloading news.csv from Google Drive...")
-    response = requests.get(url)
-    with open(file_path, "wb") as f:
-        f.write(response.content)
-    print("Download complete.")
+# File paths
+data_path = "dataset/fake_news.csv"
+model_path = "models/model.pkl"
+vectorizer_path = "models/vectorizer.pkl"
 
+# Load Data
+data = None
+if os.path.exists(data_path):
+    try:
+        data = pd.read_csv(data_path)
+        data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
+        for col in ["title", "subject", "date", "index"]:
+            if col in data.columns:
+                data.drop(col, axis=1, inplace=True)
+        st.sidebar.success("Dataset loaded successfully.")
+    except Exception as e:
+        st.sidebar.error(f"Dataset error: {e}")
+else:
+    st.sidebar.warning("Dataset not found.")
 
-# %%
-data = pd.read_csv('news.csv',index_col=0)
-data.head()
+# Load Model and Vectorizer
+try:
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    with open(vectorizer_path, "rb") as f:
+        vectorizer = pickle.load(f)
+    st.sidebar.success("Model and vectorizer loaded successfully.")
+except Exception as e:
+    st.sidebar.error(f"Model/vectorizer loading error: {e}")
+    st.stop()
 
-# %%
-data.shape
+# Input text
+st.subheader("Enter News Text")
+user_input = st.text_area("Paste your news content below:", height=200)
 
-# %%
-# Safely drop columns only if they exist
-for col in ["title", "subject", "date"]:
-    if col in data.columns:
-        data = data.drop(col, axis=1)
+if st.button("Check News Authenticity"):
+    if user_input.strip() == "":
+        st.warning("⚠️ Please enter some news content to analyze.")
+    else:
+        try:
+            input_vector = vectorizer.transform([user_input])
+            prediction = model.predict(input_vector)
 
-
-# %%
-data.isnull().sum()
-
-# %%
-# Shuffling
-data = data.sample(frac=1)
-data.reset_index(inplace=True)
-data.drop(["index"], axis=1, inplace=True)
-
-# %%
-sns.countplot(data=data,
-			x='class',
-			order=data['class'].value_counts().index)
-
-# %%
-from tqdm import tqdm
-import re
-import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem.porter import PorterStemmer
-from wordcloud import WordCloud
-
-# %%
-def preprocess_text(text_data):
-	preprocessed_text = []
-
-	for sentence in tqdm(text_data):
-		sentence = re.sub(r'[^\w\s]', '', sentence)
-		preprocessed_text.append(' '.join(token.lower()
-								for token in str(sentence).split()
-								if token not in stopwords.words('english')))
-
-	return preprocessed_text
-
-# %%
-preprocessed_review = preprocess_text(data['text'].values)
-data['text'] = preprocessed_review
-
-# %%
-# Real
-consolidated = ' '.join(
-	word for word in data['text'][data['class'] == 1].astype(str))
-wordCloud = WordCloud(width=1600,
-					height=800,
-					random_state=21,
-					max_font_size=110,
-					collocations=False)
-plt.figure(figsize=(15, 10))
-plt.imshow(wordCloud.generate(consolidated), interpolation='bilinear')
-plt.axis('off')
-plt.show()
-
-# %%
-# Fake
-consolidated = ' '.join(
-	word for word in data['text'][data['class'] == 0].astype(str))
-wordCloud = WordCloud(width=1600,
-					height=800,
-					random_state=21,
-					max_font_size=110,
-					collocations=False)
-plt.figure(figsize=(15, 10))
-plt.imshow(wordCloud.generate(consolidated), interpolation='bilinear')
-plt.axis('off')
-plt.show()
-
-# %%
-from sklearn.feature_extraction.text import CountVectorizer
-
-
-def get_top_n_words(corpus, n=None):
-	vec = CountVectorizer().fit(corpus)
-	bag_of_words = vec.transform(corpus)
-	sum_words = bag_of_words.sum(axis=0)
-	words_freq = [(word, sum_words[0, idx])
-				for word, idx in vec.vocabulary_.items()]
-	words_freq = sorted(words_freq, key=lambda x: x[1],
-						reverse=True)
-	return words_freq[:n]
-
-
-common_words = get_top_n_words(data['text'], 20)
-df1 = pd.DataFrame(common_words, columns=['Review', 'count'])
-
-df1.groupby('Review').sum()['count'].sort_values(ascending=False).plot(
-	kind='bar',
-	figsize=(10, 6),
-	xlabel="Top Words",
-	ylabel="Count",
-	title="Bar Chart of Top Words Frequency"
-)
-
-# %%
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.linear_model import LogisticRegression
-
-x_train, x_test, y_train, y_test = train_test_split(data['text'],
-													data['class'],
-													test_size=0.25)
-
-# %%
-from sklearn.feature_extraction.text import TfidfVectorizer
-
-vectorization = TfidfVectorizer()
-x_train = vectorization.fit_transform(x_train)
-x_test = vectorization.transform(x_test)
-
-# %%
-from sklearn.linear_model import LogisticRegression
-
-model = LogisticRegression()
-model.fit(x_train, y_train)
-
-# testing the model
-print(accuracy_score(y_train, model.predict(x_train)))
-print(accuracy_score(y_test, model.predict(x_test)))
-
-# %%
-from sklearn.tree import DecisionTreeClassifier
-
-model = DecisionTreeClassifier()
-model.fit(x_train, y_train)
-
-# testing the model
-print(accuracy_score(y_train, model.predict(x_train)))
-print(accuracy_score(y_test, model.predict(x_test)))
-
-# %%
-# Confusion matrix of Results from Decision Tree classification
-from sklearn import metrics
-cm = metrics.confusion_matrix(y_test, model.predict(x_test))
-
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
-											display_labels=[False, True])
-
-cm_display.plot()
-plt.show()
-
-
-
-
-
-
-
-
+            if prediction[0] == 0:
+                st.success("✅ This news appears to be **Real**.")
+            else:
+                st.error("🚫 This news appears to be **Fake**.")
+        except Exception as e:
+            st.error(f"Prediction error: {e}")
 
